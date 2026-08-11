@@ -87,6 +87,162 @@ class Grant:
     allocation_bps_total: u256
 
 
+def _normalize_review_payload(raw: dict[str, typing.Any], allocation_bps: int) -> dict[str, typing.Any]:
+    if not isinstance(raw, dict):
+        raise gl.vm.UserError("review must be an object")
+
+    decision = str(raw.get("decision", "")).strip().lower()
+    if decision not in ["complete", "incomplete", "partial", "needs_more_evidence"]:
+        raise gl.vm.UserError("invalid decision")
+
+    completion_bps = int(raw.get("completion_bps", 0))
+    payout_bps = int(raw.get("payout_bps", 0))
+    confidence_bps = int(raw.get("confidence_bps", 0))
+    if completion_bps < 0 or completion_bps > 10000:
+        raise gl.vm.UserError("invalid completion_bps")
+    if payout_bps < 0 or payout_bps > allocation_bps:
+        raise gl.vm.UserError("invalid payout_bps")
+    if confidence_bps < 0 or confidence_bps > 10000:
+        raise gl.vm.UserError("invalid confidence_bps")
+    if decision in ["incomplete", "needs_more_evidence"] and payout_bps > 0:
+        raise gl.vm.UserError("non-complete decisions cannot pay out")
+    if decision == "complete" and payout_bps < allocation_bps:
+        raise gl.vm.UserError("complete decision must release full milestone allocation")
+
+    reason_codes = raw.get("reason_codes", [])
+    if not isinstance(reason_codes, list):
+        reason_codes = []
+    clean_reasons = []
+    for reason in reason_codes[:10]:
+        code = str(reason).strip().lower().replace(" ", "_")[:56]
+        if code:
+            clean_reasons.append(code)
+
+    evidence_used = raw.get("evidence_used", [])
+    if not isinstance(evidence_used, list):
+        evidence_used = []
+    clean_evidence = []
+    for evidence in evidence_used[:12]:
+        clean_evidence.append(str(evidence)[:180])
+
+    summary = str(raw.get("summary", "")).strip()[:900]
+    if not summary:
+        summary = "No summary provided."
+
+    return {
+        "decision": decision,
+        "completion_bps": completion_bps,
+        "payout_bps": payout_bps,
+        "confidence_bps": confidence_bps,
+        "reason_codes": clean_reasons,
+        "evidence_used": clean_evidence,
+        "summary": summary,
+    }
+
+
+def _reviews_equivalent_payload(
+    proposed: dict[str, typing.Any],
+    validator_result: dict[str, typing.Any],
+    allocation_bps: int,
+) -> bool:
+    a = _normalize_review_payload(proposed, allocation_bps)
+    b = _normalize_review_payload(validator_result, allocation_bps)
+    if a["decision"] != b["decision"]:
+        return False
+    if abs(a["payout_bps"] - b["payout_bps"]) > 500:
+        return False
+    if abs(a["completion_bps"] - b["completion_bps"]) > 1500:
+        return False
+    if a["decision"] in ["complete", "incomplete"] and abs(a["confidence_bps"] - b["confidence_bps"]) > 2500:
+        return False
+    return True
+
+
+def _judge_snapshot_payload(snapshot: dict[str, typing.Any]) -> dict[str, typing.Any]:
+    fetched = []
+    images = []
+    fetch_count = 0
+    for item in snapshot["evidence"]:
+        if fetch_count >= MAX_FETCHED_EVIDENCE:
+            break
+        if item["evidence_type"] in ["url", "api", "image_url"] and item["uri"]:
+            fetch_count += 1
+            try:
+                if item["evidence_type"] == "api":
+                    response = gl.nondet.web.get(item["uri"])
+                    body = response.body.decode("utf-8")[:MAX_FETCHED_CHARS]
+                elif item["evidence_type"] == "image_url":
+                    if len(images) < MAX_IMAGE_EVIDENCE:
+                        screenshot = gl.nondet.web.render(
+                            item["uri"],
+                            mode="screenshot",
+                            wait_after_loaded="2s",
+                        )
+                        images.append(screenshot)
+                        body = "Screenshot captured for visual milestone review."
+                    else:
+                        body = "Image evidence skipped because image limit was reached."
+                else:
+                    body = gl.nondet.web.render(
+                        item["uri"],
+                        mode="text",
+                        wait_after_loaded="2s",
+                    )[:MAX_FETCHED_CHARS]
+                fetched.append(
+                    {
+                        "uri": item["uri"],
+                        "evidence_type": item["evidence_type"],
+                        "content_excerpt": body,
+                    }
+                )
+            except Exception as exc:
+                fetched.append(
+                    {
+                        "uri": item["uri"],
+                        "evidence_type": item["evidence_type"],
+                        "fetch_error": str(exc)[:240],
+                    }
+                )
+
+    prompt = f"""
+You are a milestone reviewer for VeriGrant, a reusable GenLayer grant primitive.
+Evaluate whether the grantee satisfied this milestone.
+
+Return JSON exactly matching this schema:
+{{
+  "decision": "complete" | "incomplete" | "partial" | "needs_more_evidence",
+  "completion_bps": integer from 0 to 10000,
+  "payout_bps": integer from 0 to the milestone allocation_bps,
+  "confidence_bps": integer from 0 to 10000,
+  "reason_codes": array of short snake_case strings,
+  "evidence_used": array of evidence indexes or URIs,
+  "summary": concise explanation under 900 characters
+}}
+
+Decision rules:
+- complete means the milestone criteria are materially satisfied.
+- incomplete means the evidence materially fails the criteria.
+- partial means enough work is complete to justify partial release under review_policy.
+- needs_more_evidence means the current record cannot support a reliable decision.
+- payout_bps is denominated against the total grant, not only this milestone.
+- payout_bps must never exceed milestone allocation_bps.
+- If decision is complete, payout_bps should normally equal allocation_bps.
+- If decision is incomplete or needs_more_evidence, payout_bps should normally be 0.
+- Compare evidence against the milestone criteria and review_policy, not unstated preferences.
+
+Milestone review packet:
+{json.dumps(snapshot, sort_keys=True)}
+
+Fetched public evidence excerpts:
+{json.dumps(fetched, sort_keys=True)}
+"""
+    if len(images) > 0:
+        raw = gl.nondet.exec_prompt(prompt, images=images, response_format="json")
+    else:
+        raw = gl.nondet.exec_prompt(prompt, response_format="json")
+    return _normalize_review_payload(raw, int(snapshot["allocation_bps"]))
+
+
 class VeriGrant(gl.Contract):
     """
     Reusable milestone grant verifier for GenLayer.
@@ -417,22 +573,23 @@ class VeriGrant(gl.Contract):
 
     def _review_milestone(self, grant: Grant, milestone: Milestone) -> Review:
         snapshot = self._milestone_snapshot(grant, milestone)
+        allocation_bps = int(milestone.allocation_bps)
 
         def leader_fn():
-            return self._judge_snapshot(snapshot)
+            return _judge_snapshot_payload(snapshot)
 
         def validator_fn(leaders_res) -> bool:
             if not isinstance(leaders_res, gl.vm.Return):
                 return False
             try:
                 proposed = leaders_res.calldata
-                validator_result = leader_fn()
-                return self._reviews_equivalent(proposed, validator_result, int(milestone.allocation_bps))
+                validator_result = _judge_snapshot_payload(snapshot)
+                return _reviews_equivalent_payload(proposed, validator_result, allocation_bps)
             except Exception:
                 return False
 
         result = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
-        normalized = self._normalize_review(result, int(milestone.allocation_bps))
+        normalized = _normalize_review_payload(result, allocation_bps)
         return Review(
             decided=True,
             decision=normalized["decision"],
@@ -447,88 +604,7 @@ class VeriGrant(gl.Contract):
         )
 
     def _judge_snapshot(self, snapshot: dict[str, typing.Any]) -> dict[str, typing.Any]:
-        fetched = []
-        images = []
-        fetch_count = 0
-        for item in snapshot["evidence"]:
-            if fetch_count >= MAX_FETCHED_EVIDENCE:
-                break
-            if item["evidence_type"] in ["url", "api", "image_url"] and item["uri"]:
-                fetch_count += 1
-                try:
-                    if item["evidence_type"] == "api":
-                        response = gl.nondet.web.get(item["uri"])
-                        body = response.body.decode("utf-8")[:MAX_FETCHED_CHARS]
-                    elif item["evidence_type"] == "image_url":
-                        if len(images) < MAX_IMAGE_EVIDENCE:
-                            screenshot = gl.nondet.web.render(
-                                item["uri"],
-                                mode="screenshot",
-                                wait_after_loaded="2s",
-                            )
-                            images.append(screenshot)
-                            body = "Screenshot captured for visual milestone review."
-                        else:
-                            body = "Image evidence skipped because image limit was reached."
-                    else:
-                        body = gl.nondet.web.render(
-                            item["uri"],
-                            mode="text",
-                            wait_after_loaded="2s",
-                        )[:MAX_FETCHED_CHARS]
-                    fetched.append(
-                        {
-                            "uri": item["uri"],
-                            "evidence_type": item["evidence_type"],
-                            "content_excerpt": body,
-                        }
-                    )
-                except Exception as exc:
-                    fetched.append(
-                        {
-                            "uri": item["uri"],
-                            "evidence_type": item["evidence_type"],
-                            "fetch_error": str(exc)[:240],
-                        }
-                    )
-
-        prompt = f"""
-You are a milestone reviewer for VeriGrant, a reusable GenLayer grant primitive.
-Evaluate whether the grantee satisfied this milestone.
-
-Return JSON exactly matching this schema:
-{{
-  "decision": "complete" | "incomplete" | "partial" | "needs_more_evidence",
-  "completion_bps": integer from 0 to 10000,
-  "payout_bps": integer from 0 to the milestone allocation_bps,
-  "confidence_bps": integer from 0 to 10000,
-  "reason_codes": array of short snake_case strings,
-  "evidence_used": array of evidence indexes or URIs,
-  "summary": concise explanation under 900 characters
-}}
-
-Decision rules:
-- complete means the milestone criteria are materially satisfied.
-- incomplete means the evidence materially fails the criteria.
-- partial means enough work is complete to justify partial release under review_policy.
-- needs_more_evidence means the current record cannot support a reliable decision.
-- payout_bps is denominated against the total grant, not only this milestone.
-- payout_bps must never exceed milestone allocation_bps.
-- If decision is complete, payout_bps should normally equal allocation_bps.
-- If decision is incomplete or needs_more_evidence, payout_bps should normally be 0.
-- Compare evidence against the milestone criteria and review_policy, not unstated preferences.
-
-Milestone review packet:
-{json.dumps(snapshot, sort_keys=True)}
-
-Fetched public evidence excerpts:
-{json.dumps(fetched, sort_keys=True)}
-"""
-        if len(images) > 0:
-            raw = gl.nondet.exec_prompt(prompt, images=images, response_format="json")
-        else:
-            raw = gl.nondet.exec_prompt(prompt, response_format="json")
-        return self._normalize_review(raw, int(snapshot["allocation_bps"]))
+        return _judge_snapshot_payload(snapshot)
 
     def _milestone_snapshot(self, grant: Grant, milestone: Milestone) -> dict[str, typing.Any]:
         evidence = []
@@ -560,56 +636,7 @@ Fetched public evidence excerpts:
         }
 
     def _normalize_review(self, raw: dict[str, typing.Any], allocation_bps: int) -> dict[str, typing.Any]:
-        if not isinstance(raw, dict):
-            raise gl.vm.UserError("review must be an object")
-
-        decision = str(raw.get("decision", "")).strip().lower()
-        if decision not in ["complete", "incomplete", "partial", "needs_more_evidence"]:
-            raise gl.vm.UserError("invalid decision")
-
-        completion_bps = int(raw.get("completion_bps", 0))
-        payout_bps = int(raw.get("payout_bps", 0))
-        confidence_bps = int(raw.get("confidence_bps", 0))
-        if completion_bps < 0 or completion_bps > 10000:
-            raise gl.vm.UserError("invalid completion_bps")
-        if payout_bps < 0 or payout_bps > allocation_bps:
-            raise gl.vm.UserError("invalid payout_bps")
-        if confidence_bps < 0 or confidence_bps > 10000:
-            raise gl.vm.UserError("invalid confidence_bps")
-        if decision in ["incomplete", "needs_more_evidence"] and payout_bps > 0:
-            raise gl.vm.UserError("non-complete decisions cannot pay out")
-        if decision == "complete" and payout_bps < allocation_bps:
-            raise gl.vm.UserError("complete decision must release full milestone allocation")
-
-        reason_codes = raw.get("reason_codes", [])
-        if not isinstance(reason_codes, list):
-            reason_codes = []
-        clean_reasons = []
-        for reason in reason_codes[:10]:
-            code = str(reason).strip().lower().replace(" ", "_")[:56]
-            if code:
-                clean_reasons.append(code)
-
-        evidence_used = raw.get("evidence_used", [])
-        if not isinstance(evidence_used, list):
-            evidence_used = []
-        clean_evidence = []
-        for evidence in evidence_used[:12]:
-            clean_evidence.append(str(evidence)[:180])
-
-        summary = str(raw.get("summary", "")).strip()[:900]
-        if not summary:
-            summary = "No summary provided."
-
-        return {
-            "decision": decision,
-            "completion_bps": completion_bps,
-            "payout_bps": payout_bps,
-            "confidence_bps": confidence_bps,
-            "reason_codes": clean_reasons,
-            "evidence_used": clean_evidence,
-            "summary": summary,
-        }
+        return _normalize_review_payload(raw, allocation_bps)
 
     def _reviews_equivalent(
         self,
@@ -617,17 +644,7 @@ Fetched public evidence excerpts:
         validator_result: dict[str, typing.Any],
         allocation_bps: int,
     ) -> bool:
-        a = self._normalize_review(proposed, allocation_bps)
-        b = self._normalize_review(validator_result, allocation_bps)
-        if a["decision"] != b["decision"]:
-            return False
-        if abs(a["payout_bps"] - b["payout_bps"]) > 500:
-            return False
-        if abs(a["completion_bps"] - b["completion_bps"]) > 1500:
-            return False
-        if a["decision"] in ["complete", "incomplete"] and abs(a["confidence_bps"] - b["confidence_bps"]) > 2500:
-            return False
-        return True
+        return _reviews_equivalent_payload(proposed, validator_result, allocation_bps)
 
     def _grant(self, grant_id: int) -> Grant:
         if grant_id < 0 or grant_id >= len(self.grants):
