@@ -35,6 +35,7 @@ contracts/
 
 docs/
   ARCHITECTURE.md      # State design, storage layout, and consensus model
+  DEVELOPER_GUIDE.md   # Integration and Studio usage guide
   USAGE.md             # GenLayer Studio testing guide
   TEST_PLAN.md         # Positive and negative Bradbury test plan
   TEST_REPORT.md       # Final Bradbury deployment and execution evidence
@@ -65,6 +66,14 @@ The deployment and both milestone paths were tested on GenLayer Bradbury:
 - valid deployment evidence was accepted, paid out, and left `accounted_balance()` at `0`.
 
 See [docs/TEST_REPORT.md](docs/TEST_REPORT.md) for transaction hashes and final states.
+
+## Developer Documentation
+
+- [Developer Guide](docs/DEVELOPER_GUIDE.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Usage Guide](docs/USAGE.md)
+- [Bradbury Test Report](docs/TEST_REPORT.md)
+- Documentation site: pending deployment
 
 ## Contract Lifecycle
 
