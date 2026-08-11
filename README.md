@@ -73,7 +73,7 @@ See [docs/TEST_REPORT.md](docs/TEST_REPORT.md) for transaction hashes and final 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Usage Guide](docs/USAGE.md)
 - [Bradbury Test Report](docs/TEST_REPORT.md)
-- Documentation site: https://verigrant-docs.sundayalbert242.chatgpt.site
+- Documentation site: https://manablaq.github.io/genlayer-verigrant/
 
 ## Contract Lifecycle
 

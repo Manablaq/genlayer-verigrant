@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VeriGrant Documentation</title>
+    <meta
+      name="description"
+      content="Developer documentation for VeriGrant, a GenLayer Intelligent Contract for AI-reviewed milestone grants and escrow-safe payouts."
+    />
+    <meta property="og:title" content="VeriGrant Documentation" />
+    <meta
+      property="og:description"
+      content="AI-reviewed milestone grants for GenLayer builders, with escrow accounting and Bradbury-tested payout paths."
+    />
+    <meta property="og:image" content="./public/og.png" />
+    <link rel="icon" href="./public/favicon.svg" />
+    <link rel="stylesheet" href="./pages.css" />
+  </head>
+  <body>
+    <nav class="topbar" aria-label="Primary">
+      <a href="#overview" class="brand" aria-label="VeriGrant overview">
+        <span class="brand-mark">VG</span>
+        <span>VeriGrant</span>
+      </a>
+      <div class="navlinks">
+        <a href="#developer-guide">Guide</a>
+        <a href="#api">API</a>
+        <a href="#testing">Testing</a>
+        <a href="https://github.com/Manablaq/genlayer-verigrant">GitHub</a>
+      </div>
+    </nav>
+
+    <main>
+      <section class="hero" id="overview">
+        <div>
+          <p class="eyebrow">GenLayer Intelligent Contract Primitive</p>
+          <h1>AI-reviewed milestone grants with escrow-safe payouts.</h1>
+          <p class="lede">
+            VeriGrant lets sponsors fund milestone-based work, collect evidence,
+            use GenLayer consensus to review completion, and finalize deterministic
+            payout or refund accounting.
+          </p>
+          <div class="hero-actions" aria-label="Project links">
+            <a class="primary-link" href="#developer-guide">Start building</a>
+            <a
+              class="secondary-link"
+              href="https://github.com/Manablaq/genlayer-verigrant/blob/main/docs/TEST_REPORT.md"
+            >
+              View Bradbury report
+            </a>
+          </div>
+        </div>
+        <aside class="deployment-panel" aria-label="Bradbury deployment">
+          <div>
+            <span class="label">Bradbury Contract</span>
+            <code>0x6CD27E9823dE3B7293AeC9C848cF0e1C131D54c9</code>
+          </div>
+          <div>
+            <span class="label">Deployment Tx</span>
+            <code>
+              0xb6218d6006b1c0787b5bd18155445c7b958ae945e537d9d92dc03f81f1250362
+            </code>
+          </div>
+          <div class="status-grid">
+            <span>ACCEPTED</span>
+            <span>AGREE</span>
+            <span>FINISHED_WITH_RETURN</span>
+          </div>
+        </aside>
+      </section>
+
+      <section class="section" id="why">
+        <div class="section-heading">
+          <p class="eyebrow">Purpose</p>
+          <h2>Built as a reusable primitive, not a one-off demo.</h2>
+        </div>
+        <div class="two-column">
+          <p>
+            Grant programs, DAO funding, open-source sponsorships, research
+            awards, and AI-agent work orders all need the same core primitive:
+            evidence-backed milestone review before escrow is released.
+          </p>
+          <p>
+            VeriGrant models that primitive directly in contract state. It uses
+            deterministic storage and accounting for funds, and GenLayer
+            nondeterministic consensus for evidence interpretation.
+          </p>
+        </div>
+      </section>
+
+      <section class="section" id="developer-guide">
+        <div class="section-heading">
+          <p class="eyebrow">Developer Guide</p>
+          <h2>How builders integrate VeriGrant.</h2>
+        </div>
+        <div class="timeline">
+          <article class="timeline-item">
+            <span>1</span>
+            <div>
+              <h3>Create</h3>
+              <p>Sponsor creates a grant with a grantee, scope, and review policy.</p>
+            </div>
+          </article>
+          <article class="timeline-item">
+            <span>2</span>
+            <div>
+              <h3>Configure</h3>
+              <p>Sponsor adds milestones with criteria, evidence schema, and allocation bps.</p>
+            </div>
+          </article>
+          <article class="timeline-item">
+            <span>3</span>
+            <div>
+              <h3>Fund</h3>
+              <p>Sponsor deposits escrow through the payable fund_grant method.</p>
+            </div>
+          </article>
+          <article class="timeline-item">
+            <span>4</span>
+            <div>
+              <h3>Evidence</h3>
+              <p>Sponsor or grantee submits text, URL, API, image URL, or attestation evidence.</p>
+            </div>
+          </article>
+          <article class="timeline-item">
+            <span>5</span>
+            <div>
+              <h3>Review</h3>
+              <p>GenLayer validators run nondeterministic evidence review and store a structured result.</p>
+            </div>
+          </article>
+          <article class="timeline-item">
+            <span>6</span>
+            <div>
+              <h3>Finalize</h3>
+              <p>The contract pays the grantee, refunds the sponsor, or splits the allocation.</p>
+            </div>
+          </article>
+        </div>
+        <div class="code-block" aria-label="VeriGrant usage sample">
+          <pre><code># Deploy contracts/veri_grant.py on Bradbury, then:
+
+create_grant(
+  grantee="0x5bB49021001200fE8156a81c7fcF097e535e7181",
+  title="Milestone Grant",
+  grant_spec="Deliver the agreed public artifact.",
+  review_policy="Release funds only when evidence satisfies the milestone criteria."
+)
+
+add_milestone(
+  grant_id=0,
+  title="Deployment and Test Report",
+  criteria="Evidence must include a deployed contract address and accepted transaction.",
+  evidence_schema="Submit one text evidence item.",
+  allocation_bps=10000,
+  deadline_ts=0
+)
+
+fund_grant(grant_id=0)
+submit_milestone_evidence(0, 0, "text", "", "Evidence text...")
+request_milestone_review(0, 0)
+finalize_milestone(0, 0)</code></pre>
+        </div>
+      </section>
+
+      <section class="section" id="architecture">
+        <div class="section-heading">
+          <p class="eyebrow">Architecture</p>
+          <h2>Deterministic accounting, nondeterministic review.</h2>
+        </div>
+        <div class="feature-grid">
+          <article>
+            <h3>Flat Storage</h3>
+            <p>
+              Grants, milestones, and evidence use top-level arrays with explicit
+              IDs, avoiding nested dynamic arrays while supporting interleaved
+              grant activity.
+            </p>
+          </article>
+          <article>
+            <h3>Structured Review</h3>
+            <p>
+              Reviews normalize LLM output into decision, completion_bps,
+              payout_bps, confidence, reason codes, evidence used, and summary.
+            </p>
+          </article>
+          <article>
+            <h3>Consensus Boundary</h3>
+            <p>
+              Storage is snapshotted before run_nondet_unsafe. Leader and
+              validator closures operate on plain data to avoid nondeterministic
+              storage reads.
+            </p>
+          </article>
+          <article>
+            <h3>Escrow Liability</h3>
+            <p>
+              accounted_balance reports remaining internal liability as escrowed
+              minus paid out minus refunded across all grants.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="api">
+        <div class="section-heading">
+          <p class="eyebrow">Contract API</p>
+          <h2>Public methods exposed in Studio.</h2>
+        </div>
+        <div class="api-grid">
+          <div>
+            <h3>Write Methods</h3>
+            <ul>
+              <li><code>create_grant</code><span>Create a reusable grant record for one sponsor and grantee.</span></li>
+              <li><code>add_milestone</code><span>Attach criteria, evidence schema, allocation_bps, and optional deadline.</span></li>
+              <li><code>fund_grant</code><span>Payable escrow funding for a grant.</span></li>
+              <li><code>submit_milestone_evidence</code><span>Add bounded milestone evidence.</span></li>
+              <li><code>request_milestone_review</code><span>Run GenLayer nondeterministic consensus over milestone evidence.</span></li>
+              <li><code>challenge_milestone_review</code><span>Bonded counter-evidence and re-review path.</span></li>
+              <li><code>finalize_milestone</code><span>Apply payout/refund after a decided review.</span></li>
+            </ul>
+          </div>
+          <div>
+            <h3>Read Methods</h3>
+            <ul>
+              <li><code>get_grant_count</code><span>Count grants.</span></li>
+              <li><code>get_grant</code><span>Read sponsor, grantee, status, escrow, payout, and refund fields.</span></li>
+              <li><code>get_milestone</code><span>Read milestone criteria, allocation, evidence count, and status.</span></li>
+              <li><code>get_evidence</code><span>Read a specific evidence record.</span></li>
+              <li><code>get_review</code><span>Read structured AI/validator review output.</span></li>
+              <li><code>contract_balance</code><span>Raw GenLayer contract balance.</span></li>
+              <li><code>accounted_balance</code><span>Internal escrow liability across active grants.</span></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="testing">
+        <div class="section-heading">
+          <p class="eyebrow">Bradbury Evidence</p>
+          <h2>Both critical paths passed on testnet.</h2>
+        </div>
+        <div class="test-grid">
+          <article>
+            <h3>Negative Path</h3>
+            <p>Placeholder evidence rejected and refunded.</p>
+            <ul>
+              <li>decision: incomplete</li>
+              <li>payout_bps: 0</li>
+              <li>refunded: 1000000000000000000</li>
+              <li>accounted_balance: 0</li>
+            </ul>
+          </article>
+          <article>
+            <h3>Positive Path</h3>
+            <p>Valid evidence accepted and paid out.</p>
+            <ul>
+              <li>decision: complete</li>
+              <li>payout_bps: 10000</li>
+              <li>paid_out: 1000000000000000000</li>
+              <li>accounted_balance: 0</li>
+            </ul>
+          </article>
+        </div>
+        <div class="resource-row">
+          <a href="https://github.com/Manablaq/genlayer-verigrant/blob/main/docs/DEVELOPER_GUIDE.md">Developer Guide</a>
+          <a href="https://github.com/Manablaq/genlayer-verigrant/blob/main/docs/ARCHITECTURE.md">Architecture</a>
+          <a href="https://github.com/Manablaq/genlayer-verigrant/blob/main/docs/TEST_REPORT.md">Test Report</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>
+        VeriGrant is a standalone GenLayer Intelligent Contract primitive for
+        reusable, evidence-backed milestone grants.
+      </p>
+    </footer>
+  </body>
+</html>
