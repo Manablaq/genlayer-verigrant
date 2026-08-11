@@ -37,12 +37,34 @@ docs/
   ARCHITECTURE.md      # State design, storage layout, and consensus model
   USAGE.md             # GenLayer Studio testing guide
   TEST_PLAN.md         # Positive and negative Bradbury test plan
+  TEST_REPORT.md       # Final Bradbury deployment and execution evidence
   GENLAYER_NOTES.md    # GenLayer-specific implementation notes
 
 LICENSE
 README.md
 SECURITY.md
 ```
+
+## Bradbury Deployment
+
+Final tested deployment:
+
+```text
+0x6CD27E9823dE3B7293AeC9C848cF0e1C131D54c9
+```
+
+Deployment transaction:
+
+```text
+0xb6218d6006b1c0787b5bd18155445c7b958ae945e537d9d92dc03f81f1250362
+```
+
+The deployment and both milestone paths were tested on GenLayer Bradbury:
+
+- placeholder evidence was rejected, refunded, and left `accounted_balance()` at `0`;
+- valid deployment evidence was accepted, paid out, and left `accounted_balance()` at `0`.
+
+See [docs/TEST_REPORT.md](docs/TEST_REPORT.md) for transaction hashes and final states.
 
 ## Contract Lifecycle
 
@@ -124,7 +146,7 @@ Milestone reviews are normalized into stable fields:
 
 VeriGrant uses `gl.vm.run_nondet_unsafe(leader_fn, validator_fn)`.
 
-The leader builds a deterministic milestone packet, fetches bounded public evidence where needed, asks an LLM for structured JSON, and normalizes the result. Validators independently rerun the review and compare stable fields:
+The contract first snapshots grant, milestone, and evidence state into plain data. The leader then fetches bounded public evidence where needed, asks an LLM for structured JSON, and normalizes the result. Validators independently rerun the review and compare stable fields:
 
 - exact `decision`;
 - `payout_bps` within tolerance;
@@ -132,6 +154,8 @@ The leader builds a deterministic milestone packet, fetches bounded public evide
 - confidence tolerance for complete/incomplete decisions.
 
 This follows GenLayer's Equivalence Principle: validator prose can differ, but state-affecting review fields must agree.
+
+The review helpers are module-level pure functions so the nondeterministic closures do not capture contract storage. This was verified after a Bradbury trace showed storage reads inside nondeterministic mode can cause validator disagreement.
 
 ## Escrow Accounting
 
@@ -175,4 +199,3 @@ After all milestones are finalized or expired, `accounted_balance()` should retu
 ## License
 
 MIT
-

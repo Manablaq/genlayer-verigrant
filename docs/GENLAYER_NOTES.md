@@ -43,9 +43,26 @@ Validators compare stable fields:
 
 The contract intentionally avoids comparing full summary prose.
 
+## Nondeterministic Storage Boundary
+
+Bradbury testing exposed an important boundary: contract storage must not be read from inside the `run_nondet_unsafe` leader or validator closures.
+
+An earlier review transaction returned the correct review payload but ended as `UNDETERMINED` / `DISAGREE`. `gen_dbg_traceTransaction` showed:
+
+```text
+Reading storage in nondet mode is not supported
+```
+
+The final contract fixes this by:
+
+- reading all grant, milestone, and evidence storage before entering nondeterministic execution;
+- passing a plain Python snapshot into the leader and validator;
+- using module-level helper functions for review, normalization, and equivalence checks.
+
+This keeps nondeterministic consensus focused on the evidence review itself, not on pickled contract storage.
+
 ## Balance Notes
 
 Use `accounted_balance()` for Studio escrow-liability checks.
 
 `contract_balance()` exposes raw `self.balance`, which can differ from internal case accounting after EOA transfer messages in Studio's simulated environment.
-

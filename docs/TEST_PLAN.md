@@ -2,6 +2,8 @@
 
 Use this plan after deploying VeriGrant to GenLayer Bradbury Testnet.
 
+The final Bradbury execution record is available in [TEST_REPORT.md](TEST_REPORT.md).
+
 ## Test 1: Negative Milestone Review
 
 Purpose: prove VeriGrant rejects placeholder or insufficient evidence.
@@ -94,3 +96,4 @@ gen_dbg_traceTransaction
 
 If a non-deterministic review returns `LEADER_TIMEOUT`, retry the review call before changing contract code.
 
+If a review returns `UNDETERMINED` / `DISAGREE`, trace the transaction before changing test inputs. During VeriGrant testing, one such case was traced to storage being captured inside nondeterministic execution. The final contract avoids this by snapshotting storage before `run_nondet_unsafe`.
