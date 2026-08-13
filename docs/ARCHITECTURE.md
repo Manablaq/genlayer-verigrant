@@ -121,7 +121,7 @@ The validator reruns the same process and compares stable fields.
 Two reviews are considered equivalent when:
 
 - `decision` matches exactly.
-- `payout_bps` differs by no more than 500 bps.
+- `payout_bps` matches exactly, because it determines the escrow transfer.
 - `completion_bps` differs by no more than 1500 bps.
 - confidence for complete/incomplete decisions differs by no more than 2500 bps.
 
@@ -149,4 +149,3 @@ When all milestones are finalized or expired, any remaining unallocated escrow i
 - Evidence count and field sizes are bounded.
 - Web evidence excerpts and image evidence are bounded.
 - Worker submissions are blocked after deadline when `deadline_ts > 0`.
-

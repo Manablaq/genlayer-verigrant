@@ -149,7 +149,9 @@ def _reviews_equivalent_payload(
     b = _normalize_review_payload(validator_result, allocation_bps)
     if a["decision"] != b["decision"]:
         return False
-    if abs(a["payout_bps"] - b["payout_bps"]) > 500:
+    # payout_bps is consumed by finalize_milestone to calculate an escrow
+    # transfer, so validators must bind the exact amount rather than a range.
+    if a["payout_bps"] != b["payout_bps"]:
         return False
     if abs(a["completion_bps"] - b["completion_bps"]) > 1500:
         return False
@@ -226,8 +228,8 @@ Decision rules:
 - needs_more_evidence means the current record cannot support a reliable decision.
 - payout_bps is denominated against the total grant, not only this milestone.
 - payout_bps must never exceed milestone allocation_bps.
-- If decision is complete, payout_bps should normally equal allocation_bps.
-- If decision is incomplete or needs_more_evidence, payout_bps should normally be 0.
+- If decision is complete, payout_bps must equal allocation_bps.
+- If decision is incomplete or needs_more_evidence, payout_bps must be 0.
 - Compare evidence against the milestone criteria and review_policy, not unstated preferences.
 
 Milestone review packet:

@@ -34,10 +34,11 @@ This mirrors the tested pattern from DisputeKit and avoids Studio payable-value 
 
 ## Review Equivalence
 
-Validators compare stable fields:
+Validators compare stable fields. Transfer-affecting fields must bind exactly:
 
-- `decision`
-- `payout_bps`
+- `decision` matches exactly.
+- `payout_bps` matches exactly because `finalize_milestone` uses it to calculate
+  the escrow transfer.
 - `completion_bps`
 - `confidence_bps`
 

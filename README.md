@@ -2,6 +2,12 @@
 
 **Reusable AI-reviewed milestone grant primitive for GenLayer Intelligent Contracts.**
 
+> **Correction status (2026-08-13):** The Bradbury deployment documented below
+> is historical. The current source requires validators to agree on the exact
+> `payout_bps` that determines an escrow transfer. Deploy a new Bradbury
+> instance from this source before treating the correction as live. See
+> [the review response](docs/REVIEW_RESPONSE_2026-08-13.md).
+
 VeriGrant helps grant sponsors fund milestone-based work and release funds only after evidence-backed, consensus-reviewed completion. A sponsor creates a grant, adds milestones with criteria and payout allocations, funds escrow, receives evidence from the grantee, asks GenLayer validators to review the milestone, and finalizes payout or refund.
 
 The contract is a standalone primitive. It is designed for ecosystem grant programs, DAO funding, hackathon awards, public-goods funding, research milestones, open-source sponsorships, AI-agent work orders, and builder accountability systems.
@@ -38,7 +44,8 @@ docs/
   DEVELOPER_GUIDE.md   # Integration and Studio usage guide
   USAGE.md             # GenLayer Studio testing guide
   TEST_PLAN.md         # Positive and negative Bradbury test plan
-  TEST_REPORT.md       # Final Bradbury deployment and execution evidence
+  TEST_REPORT.md       # Historical Bradbury deployment and execution evidence
+  REVIEW_RESPONSE_2026-08-13.md # Exact-payout correction and redeployment note
   GENLAYER_NOTES.md    # GenLayer-specific implementation notes
 
 LICENSE
@@ -46,9 +53,9 @@ README.md
 SECURITY.md
 ```
 
-## Bradbury Deployment
+## Historical Bradbury Deployment
 
-Final tested deployment:
+Historical tested deployment:
 
 ```text
 0x6CD27E9823dE3B7293AeC9C848cF0e1C131D54c9
@@ -60,12 +67,14 @@ Deployment transaction:
 0xb6218d6006b1c0787b5bd18155445c7b958ae945e537d9d92dc03f81f1250362
 ```
 
-The deployment and both milestone paths were tested on GenLayer Bradbury:
+The historical deployment and both milestone paths were tested on GenLayer Bradbury:
 
 - placeholder evidence was rejected, refunded, and left `accounted_balance()` at `0`;
 - valid deployment evidence was accepted, paid out, and left `accounted_balance()` at `0`.
 
 See [docs/TEST_REPORT.md](docs/TEST_REPORT.md) for transaction hashes and final states.
+It does not prove the current exact-payout correction, which requires a fresh
+deployment and the rerun test plan.
 
 ## Developer Documentation
 
@@ -74,6 +83,19 @@ See [docs/TEST_REPORT.md](docs/TEST_REPORT.md) for transaction hashes and final 
 - [Usage Guide](docs/USAGE.md)
 - [Bradbury Test Report](docs/TEST_REPORT.md)
 - Documentation site: https://manablaq.github.io/genlayer-verigrant/
+
+## Correction Verification
+
+Run the exact-payout equivalence regression test before deployment:
+
+```bash
+python3 -m unittest tests/test_review_equivalence.py -v
+```
+
+The test proves that two normalized reviews with the same decision but different
+`payout_bps`, including the formerly allowed 500-bps difference, are not
+equivalent. See [the correction note](docs/REVIEW_RESPONSE_2026-08-13.md) for
+the deployment and resubmission requirements.
 
 ## Contract Lifecycle
 
@@ -158,7 +180,7 @@ VeriGrant uses `gl.vm.run_nondet_unsafe(leader_fn, validator_fn)`.
 The contract first snapshots grant, milestone, and evidence state into plain data. The leader then fetches bounded public evidence where needed, asks an LLM for structured JSON, and normalizes the result. Validators independently rerun the review and compare stable fields:
 
 - exact `decision`;
-- `payout_bps` within tolerance;
+- exact `payout_bps`, because it determines the escrow transfer;
 - `completion_bps` within tolerance;
 - confidence tolerance for complete/incomplete decisions.
 

@@ -1,4 +1,10 @@
-# Bradbury Test Report
+# Historical Bradbury Test Report
+
+> This report applies to the deployment at
+> `0x6CD27E9823dE3B7293AeC9C848cF0e1C131D54c9`, which has been superseded by
+> the payout-consensus correction in
+> [REVIEW_RESPONSE_2026-08-13.md](REVIEW_RESPONSE_2026-08-13.md). Do not use
+> this deployment as evidence for the corrected exact-payout equivalence rule.
 
 This report records the final VeriGrant deployment and execution evidence from GenLayer Bradbury Testnet.
 

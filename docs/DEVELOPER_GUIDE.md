@@ -18,9 +18,14 @@ Use VeriGrant when a workflow needs evidence-backed milestone review before fund
 
 Do not use VeriGrant as a simple storage contract. Its value comes from combining structured escrow accounting with GenLayer nondeterministic consensus over ambiguous public evidence.
 
-## Contract Address
+## Historical Contract Address
 
-Final Bradbury deployment:
+> The instance below contains the rejected payout-tolerance equivalence logic.
+> It is retained only as historical test evidence. Deploy a new Bradbury instance
+> from the current `contracts/veri_grant.py` before integrating VeriGrant or
+> using it as evidence for the correction.
+
+Historical Bradbury deployment:
 
 ```text
 0x6CD27E9823dE3B7293AeC9C848cF0e1C131D54c9
@@ -37,6 +42,17 @@ Source:
 ```text
 contracts/veri_grant.py
 ```
+
+Before deployment, run the exact-payout regression suite:
+
+```bash
+python3 -m unittest tests/test_review_equivalence.py -v
+```
+
+The source now requires exact equality for `payout_bps` because that field is
+used to calculate the escrow transfer in `finalize_milestone`. The complete
+review response and redeployment requirements are recorded in
+[REVIEW_RESPONSE_2026-08-13.md](REVIEW_RESPONSE_2026-08-13.md).
 
 ## Core Concepts
 
@@ -202,8 +218,11 @@ text
 uri:
 
 description:
-VeriGrant deployed at 0x6CD27E9823dE3B7293AeC9C848cF0e1C131D54c9. The deployment transaction 0xb6218d6006b1c0787b5bd18155445c7b958ae945e537d9d92dc03f81f1250362 was accepted. Public test documentation is recorded in the repository test report.
+VeriGrant deployed at <NEW_BRADBURY_CONTRACT_ADDRESS>. The deployment transaction <NEW_DEPLOYMENT_TRANSACTION_HASH> was accepted. Public test documentation is recorded in the repository test report.
 ```
+
+Replace both placeholders with the new corrected deployment values. Do not use
+the historical address or transaction shown earlier in this guide.
 
 Expected:
 

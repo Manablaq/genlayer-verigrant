@@ -2,7 +2,24 @@
 
 Use this plan after deploying VeriGrant to GenLayer Bradbury Testnet.
 
-The final Bradbury execution record is available in [TEST_REPORT.md](TEST_REPORT.md).
+The historical Bradbury execution record is available in
+[TEST_REPORT.md](TEST_REPORT.md). It predates the exact-payout correction, so
+run the local regression test and both Bradbury paths again on the new instance.
+
+## Test 0: Exact Payout Equivalence
+
+Purpose: prove validators cannot accept two review payloads that produce
+different escrow transfers.
+
+From the repository root, run:
+
+```bash
+python3 -m unittest tests/test_review_equivalence.py -v
+```
+
+Expected result: all tests pass. The suite verifies identical payout values are
+equivalent, while a one-basis-point difference and the formerly permitted
+500-basis-point difference are rejected.
 
 ## Test 1: Negative Milestone Review
 

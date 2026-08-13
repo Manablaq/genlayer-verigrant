@@ -1,6 +1,4 @@
-const contractAddress = "0x6CD27E9823dE3B7293AeC9C848cF0e1C131D54c9";
-const deploymentTx =
-  "0xb6218d6006b1c0787b5bd18155445c7b958ae945e537d9d92dc03f81f1250362";
+const historicalContractAddress = "0x6CD27E9823dE3B7293AeC9C848cF0e1C131D54c9";
 
 const lifecycle = [
   ["1", "Create", "Sponsor creates a grant with a grantee, scope, and review policy."],
@@ -115,17 +113,17 @@ export default function Home() {
         </div>
         <aside className="deployment-panel" aria-label="Bradbury deployment">
           <div>
-            <span className="label">Bradbury Contract</span>
-            <code>{contractAddress}</code>
+            <span className="label">Corrected Deployment</span>
+            <code>Pending new Bradbury instance</code>
           </div>
           <div>
-            <span className="label">Deployment Tx</span>
-            <code>{deploymentTx}</code>
+            <span className="label">Historical Deployment</span>
+            <code>{historicalContractAddress}</code>
           </div>
           <div className="status-grid">
-            <span>ACCEPTED</span>
-            <span>AGREE</span>
-            <span>FINISHED_WITH_RETURN</span>
+            <span>EXACT PAYOUT</span>
+            <span>REDEPLOY REQUIRED</span>
+            <span>HISTORICAL SOURCE</span>
           </div>
         </aside>
       </section>
@@ -192,6 +190,14 @@ export default function Home() {
             </p>
           </article>
           <article>
+            <h3>Exact Escrow Binding</h3>
+            <p>
+              Validators must match payout_bps exactly before finalization can
+              calculate an escrow transfer. Narrative metrics may vary within
+              bounded policy rules, but the transfer amount cannot.
+            </p>
+          </article>
+          <article>
             <h3>Consensus Boundary</h3>
             <p>
               Storage is snapshotted before run_nondet_unsafe. Leader and
@@ -243,7 +249,7 @@ export default function Home() {
       <section className="section" id="testing">
         <div className="section-heading">
           <p className="eyebrow">Bradbury Evidence</p>
-          <h2>Both critical paths passed on testnet.</h2>
+          <h2>Historical testnet evidence and corrected release status.</h2>
         </div>
         <div className="test-grid">
           {tests.map((test) => (
@@ -258,6 +264,13 @@ export default function Home() {
             </article>
           ))}
         </div>
+        <p>
+          The historical Bradbury contract at {historicalContractAddress} passed
+          its original tests but is superseded because it allowed payout
+          tolerance during validator comparison. The current source requires
+          exact payout agreement and must be deployed as a new Bradbury instance
+          before it is presented as the active release.
+        </p>
       </section>
 
       <section className="section final-section" id="resources">
@@ -272,6 +285,9 @@ export default function Home() {
           </a>
           <a href="https://github.com/Manablaq/genlayer-verigrant/blob/main/docs/TEST_REPORT.md">
             Test Report
+          </a>
+          <a href="https://github.com/Manablaq/genlayer-verigrant/blob/main/docs/REVIEW_RESPONSE_2026-08-13.md">
+            Payout Consensus Correction
           </a>
           <a href="https://github.com/Manablaq/genlayer-verigrant/blob/main/contracts/veri_grant.py">
             Contract Source
