@@ -2,11 +2,11 @@
 
 **Reusable AI-reviewed milestone grant primitive for GenLayer Intelligent Contracts.**
 
-> **Correction status (2026-08-13):** The Bradbury deployment documented below
-> is historical. The current source requires validators to agree on the exact
-> `payout_bps` that determines an escrow transfer. Deploy a new Bradbury
-> instance from this source before treating the correction as live. See
-> [the review response](docs/REVIEW_RESPONSE_2026-08-13.md).
+> **Correction status (2026-08-13):** The exact-payout correction is deployed
+> and tested on Bradbury at
+> `0x6B7D4b407954629C34d628f31672f4129f1926D1`. Validators must agree on the
+> exact `payout_bps` that determines an escrow transfer. See the current
+> [Bradbury test report](docs/TEST_REPORT.md).
 
 VeriGrant helps grant sponsors fund milestone-based work and release funds only after evidence-backed, consensus-reviewed completion. A sponsor creates a grant, adds milestones with criteria and payout allocations, funds escrow, receives evidence from the grantee, asks GenLayer validators to review the milestone, and finalizes payout or refund.
 
@@ -44,8 +44,8 @@ docs/
   DEVELOPER_GUIDE.md   # Integration and Studio usage guide
   USAGE.md             # GenLayer Studio testing guide
   TEST_PLAN.md         # Positive and negative Bradbury test plan
-  TEST_REPORT.md       # Historical Bradbury deployment and execution evidence
-  REVIEW_RESPONSE_2026-08-13.md # Exact-payout correction and redeployment note
+  TEST_REPORT.md       # Corrected Bradbury deployment and execution evidence
+  REVIEW_RESPONSE_2026-08-13.md # Exact-payout correction record
   GENLAYER_NOTES.md    # GenLayer-specific implementation notes
 
 LICENSE
@@ -53,28 +53,29 @@ README.md
 SECURITY.md
 ```
 
-## Historical Bradbury Deployment
+## Corrected Bradbury Deployment
 
-Historical tested deployment:
+Corrected, tested deployment:
 
 ```text
-0x6CD27E9823dE3B7293AeC9C848cF0e1C131D54c9
+0x6B7D4b407954629C34d628f31672f4129f1926D1
 ```
 
 Deployment transaction:
 
 ```text
-0xb6218d6006b1c0787b5bd18155445c7b958ae945e537d9d92dc03f81f1250362
+0x4ea22133cea28cfa94fcb9be6ffc34c99d9030ebc3b6bfda65a0947d367fadbf
 ```
 
-The historical deployment and both milestone paths were tested on GenLayer Bradbury:
+The deployment source matches `contracts/veri_grant.py` at commit `4e43896`.
+Both milestone paths were tested on GenLayer Bradbury:
 
 - placeholder evidence was rejected, refunded, and left `accounted_balance()` at `0`;
 - valid deployment evidence was accepted, paid out, and left `accounted_balance()` at `0`.
 
-See [docs/TEST_REPORT.md](docs/TEST_REPORT.md) for transaction hashes and final states.
-It does not prove the current exact-payout correction, which requires a fresh
-deployment and the rerun test plan.
+See [docs/TEST_REPORT.md](docs/TEST_REPORT.md) for transaction hashes, review
+results, and final states. The prior deployment at
+`0x6CD27E9823dE3B7293AeC9C848cF0e1C131D54c9` is historical only.
 
 ## Developer Documentation
 

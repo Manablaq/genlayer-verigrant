@@ -16,7 +16,7 @@ VeriGrant is an experimental GenLayer Intelligent Contract intended for testnet 
 - Challenge bond size is fixed and may need adjustment for production.
 - The current implementation supports a challenge action but does not enforce a time-boxed challenge window.
 - `contract_balance()` can differ from internal accounting in Studio; use `accounted_balance()` for escrow-liability checks.
-- The historical Bradbury deployment does not contain the exact-payout consensus correction. Use a newly deployed instance of the current source.
+- The current exact-payout correction is deployed and tested at `0x6B7D4b407954629C34d628f31672f4129f1926D1`. The prior deployment at `0x6CD27E9823dE3B7293AeC9C848cF0e1C131D54c9` is historical only.
 
 ## Recommended Production Hardening
 

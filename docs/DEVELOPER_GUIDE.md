@@ -18,23 +18,18 @@ Use VeriGrant when a workflow needs evidence-backed milestone review before fund
 
 Do not use VeriGrant as a simple storage contract. Its value comes from combining structured escrow accounting with GenLayer nondeterministic consensus over ambiguous public evidence.
 
-## Historical Contract Address
+## Corrected Contract Address
 
-> The instance below contains the rejected payout-tolerance equivalence logic.
-> It is retained only as historical test evidence. Deploy a new Bradbury instance
-> from the current `contracts/veri_grant.py` before integrating VeriGrant or
-> using it as evidence for the correction.
-
-Historical Bradbury deployment:
+Corrected Bradbury deployment:
 
 ```text
-0x6CD27E9823dE3B7293AeC9C848cF0e1C131D54c9
+0x6B7D4b407954629C34d628f31672f4129f1926D1
 ```
 
 Deployment transaction:
 
 ```text
-0xb6218d6006b1c0787b5bd18155445c7b958ae945e537d9d92dc03f81f1250362
+0x4ea22133cea28cfa94fcb9be6ffc34c99d9030ebc3b6bfda65a0947d367fadbf
 ```
 
 Source:
@@ -43,15 +38,17 @@ Source:
 contracts/veri_grant.py
 ```
 
-Before deployment, run the exact-payout regression suite:
+The deployed source byte-for-byte matches the contract source at commit
+`4e43896`. Before deploying a new instance, run the exact-payout regression
+suite:
 
 ```bash
 python3 -m unittest tests/test_review_equivalence.py -v
 ```
 
-The source now requires exact equality for `payout_bps` because that field is
-used to calculate the escrow transfer in `finalize_milestone`. The complete
-review response and redeployment requirements are recorded in
+The source requires exact equality for `payout_bps` because that field is used
+to calculate the escrow transfer in `finalize_milestone`. The complete review
+response and verified Bradbury execution are recorded in
 [REVIEW_RESPONSE_2026-08-13.md](REVIEW_RESPONSE_2026-08-13.md).
 
 ## Core Concepts
@@ -218,11 +215,8 @@ text
 uri:
 
 description:
-VeriGrant deployed at <NEW_BRADBURY_CONTRACT_ADDRESS>. The deployment transaction <NEW_DEPLOYMENT_TRANSACTION_HASH> was accepted. Public test documentation is recorded in the repository test report.
+VeriGrant deployed at 0x6B7D4b407954629C34d628f31672f4129f1926D1. The deployment transaction 0x4ea22133cea28cfa94fcb9be6ffc34c99d9030ebc3b6bfda65a0947d367fadbf was accepted. Public test documentation is recorded in the repository test report.
 ```
-
-Replace both placeholders with the new corrected deployment values. Do not use
-the historical address or transaction shown earlier in this guide.
 
 Expected:
 

@@ -34,10 +34,24 @@ Run it with:
 python3 -m unittest tests/test_review_equivalence.py -v
 ```
 
-## Deployment requirement
+## Deployment and Bradbury verification
 
-The existing Bradbury deployment at
+The prior Bradbury deployment at
 `0x6CD27E9823dE3B7293AeC9C848cF0e1C131D54c9` contains the rejected tolerance
-logic and is historical evidence only. The corrected source must be deployed as
-a new Bradbury instance, then tested with matching-source evidence before this
-contribution is resubmitted.
+logic and is historical evidence only.
+
+The corrected source was deployed to Bradbury at
+`0x6B7D4b407954629C34d628f31672f4129f1926D1` in deployment transaction
+`0x4ea22133cea28cfa94fcb9be6ffc34c99d9030ebc3b6bfda65a0947d367fadbf`.
+The deployment was accepted, agreed, and finished with return. Its embedded
+source byte-for-byte matches `contracts/veri_grant.py` at commit `4e43896`.
+
+The new contract completed both required paths:
+
+- placeholder evidence was reviewed as `incomplete` with `payout_bps: 0`, then
+  refunded in full;
+- valid evidence was reviewed as `complete` with `payout_bps: 10000`, then paid
+  in full;
+- `accounted_balance()` returned `0` after each finalization.
+
+The complete transaction record is in [TEST_REPORT.md](TEST_REPORT.md).

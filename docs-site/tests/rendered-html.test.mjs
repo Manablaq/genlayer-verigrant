@@ -23,7 +23,7 @@ async function render() {
   );
 }
 
-test("server-renders the exact-payout correction status", async () => {
+test("server-renders the verified exact-payout deployment", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
@@ -31,25 +31,26 @@ test("server-renders the exact-payout correction status", async () => {
   const html = await response.text();
   assert.match(html, /<title>VeriGrant Documentation<\/title>/i);
   assert.match(html, /EXACT PAYOUT/);
-  assert.match(html, /REDEPLOY REQUIRED/);
-  assert.match(html, /HISTORICAL SOURCE/);
+  assert.match(html, /BRADBURY VERIFIED/);
+  assert.match(html, /SOURCE MATCHED/);
   assert.match(html, /Validators must match payout_bps exactly/);
-  assert.match(html, /0x6CD27E9823dE3B7293AeC9C848cF0e1C131D54c9/);
+  assert.match(html, /0x6B7D4b407954629C34d628f31672f4129f1926D1/);
   assert.doesNotMatch(html, /payout_bps differs by no more than 500/i);
 });
 
-test("keeps the deployed-address status unambiguous in both site sources", async () => {
+test("keeps the corrected deployment status unambiguous in both site sources", async () => {
   const [page, staticHtml] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../index.html", import.meta.url), "utf8"),
   ]);
 
   for (const source of [page, staticHtml]) {
-    assert.match(source, /HISTORICAL SOURCE/);
-    assert.match(source, /exact payout agreement/);
-    assert.doesNotMatch(source, /V1 HISTORICAL/);
+    assert.match(source, /BRADBURY VERIFIED/);
+    assert.match(source, /SOURCE MATCHED/);
+    assert.match(source, /0x6B7D4b407954629C34d628f31672f4129f1926D1/);
+    assert.doesNotMatch(source, /Pending new Bradbury instance/);
     assert.doesNotMatch(source, /payout_bps differs by no more than 500/i);
   }
 
-  assert.doesNotMatch(page, /historicalDeploymentTx/);
+  assert.match(page, /correctedDeploymentTx/);
 });

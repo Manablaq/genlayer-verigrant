@@ -54,18 +54,18 @@
         <aside class="deployment-panel" aria-label="Bradbury deployment">
           <div>
             <span class="label">Corrected Deployment</span>
-            <code>Pending new Bradbury instance</code>
+            <code>0x6B7D4b407954629C34d628f31672f4129f1926D1</code>
           </div>
           <div>
-            <span class="label">Historical Deployment</span>
+            <span class="label">Deployment Transaction</span>
             <code>
-              0x6CD27E9823dE3B7293AeC9C848cF0e1C131D54c9
+              0x4ea22133cea28cfa94fcb9be6ffc34c99d9030ebc3b6bfda65a0947d367fadbf
             </code>
           </div>
           <div class="status-grid">
             <span>EXACT PAYOUT</span>
-            <span>REDEPLOY REQUIRED</span>
-            <span>HISTORICAL SOURCE</span>
+            <span>BRADBURY VERIFIED</span>
+            <span>SOURCE MATCHED</span>
           </div>
         </aside>
       </section>
@@ -247,7 +247,7 @@ finalize_milestone(0, 0)</code></pre>
       <section class="section" id="testing">
         <div class="section-heading">
           <p class="eyebrow">Bradbury Evidence</p>
-          <h2>Historical testnet evidence and corrected release status.</h2>
+          <h2>Corrected deployment verified on testnet.</h2>
         </div>
         <div class="test-grid">
           <article>
@@ -272,11 +272,10 @@ finalize_milestone(0, 0)</code></pre>
           </article>
         </div>
         <p>
-          The historical Bradbury contract at 0x6CD27E9823dE3B7293AeC9C848cF0e1C131D54c9
-          passed its original tests but is superseded because it allowed payout
-          tolerance during validator comparison. The current source requires
-          exact payout agreement and must be deployed as a new Bradbury instance
-          before it is presented as the active release.
+          The corrected Bradbury contract at 0x6B7D4b407954629C34d628f31672f4129f1926D1
+          matches commit 4e43896 byte-for-byte. Its placeholder-evidence path
+          refunded the full escrow and its valid-evidence path paid the full
+          escrow, with accounted_balance returning to zero after each finalization.
         </p>
         <div class="resource-row">
           <a href="https://github.com/Manablaq/genlayer-verigrant/blob/main/docs/DEVELOPER_GUIDE.md">Developer Guide</a>

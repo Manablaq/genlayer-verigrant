@@ -1,4 +1,6 @@
-const historicalContractAddress = "0x6CD27E9823dE3B7293AeC9C848cF0e1C131D54c9";
+const correctedContractAddress = "0x6B7D4b407954629C34d628f31672f4129f1926D1";
+const correctedDeploymentTx =
+  "0x4ea22133cea28cfa94fcb9be6ffc34c99d9030ebc3b6bfda65a0947d367fadbf";
 
 const lifecycle = [
   ["1", "Create", "Sponsor creates a grant with a grantee, scope, and review policy."],
@@ -114,16 +116,16 @@ export default function Home() {
         <aside className="deployment-panel" aria-label="Bradbury deployment">
           <div>
             <span className="label">Corrected Deployment</span>
-            <code>Pending new Bradbury instance</code>
+            <code>{correctedContractAddress}</code>
           </div>
           <div>
-            <span className="label">Historical Deployment</span>
-            <code>{historicalContractAddress}</code>
+            <span className="label">Deployment Transaction</span>
+            <code>{correctedDeploymentTx}</code>
           </div>
           <div className="status-grid">
             <span>EXACT PAYOUT</span>
-            <span>REDEPLOY REQUIRED</span>
-            <span>HISTORICAL SOURCE</span>
+            <span>BRADBURY VERIFIED</span>
+            <span>SOURCE MATCHED</span>
           </div>
         </aside>
       </section>
@@ -249,7 +251,7 @@ export default function Home() {
       <section className="section" id="testing">
         <div className="section-heading">
           <p className="eyebrow">Bradbury Evidence</p>
-          <h2>Historical testnet evidence and corrected release status.</h2>
+          <h2>Corrected deployment verified on testnet.</h2>
         </div>
         <div className="test-grid">
           {tests.map((test) => (
@@ -265,11 +267,10 @@ export default function Home() {
           ))}
         </div>
         <p>
-          The historical Bradbury contract at {historicalContractAddress} passed
-          its original tests but is superseded because it allowed payout
-          tolerance during validator comparison. The current source requires
-          exact payout agreement and must be deployed as a new Bradbury instance
-          before it is presented as the active release.
+          The corrected Bradbury contract at {correctedContractAddress} matches
+          commit 4e43896 byte-for-byte. Its placeholder-evidence path refunded
+          the full escrow and its valid-evidence path paid the full escrow, with
+          accounted_balance returning to zero after each finalization.
         </p>
       </section>
 
