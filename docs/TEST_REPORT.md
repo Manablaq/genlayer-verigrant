@@ -1,7 +1,26 @@
-# Corrected Bradbury Test Report
+# VeriGrant Bradbury Test Report
+
+## Challenge-Window Release
+
+The current source adds an on-chain one-hour challenge window after every
+review. Finalization is rejected until the deadline passes; either sponsor or
+grantee may submit a bonded challenge during the window, and a challenge starts
+a fresh review with a fresh deadline. Up to two challenge rounds are allowed.
+
+| Item | Value |
+| --- | --- |
+| Source status | Ready for Bradbury deployment |
+| Local regression | 6 tests passing |
+| Deployment verification | `scripts/verify-deployment.mjs` |
+| Live deployment | Pending |
+
+The current release must not be represented by the historical deployment below
+until its fresh Explorer address, deployment transaction, source hash, and
+challenge-window transactions are recorded.
 
 This report records the Bradbury deployment and end-to-end execution evidence
-for VeriGrant's exact-payout consensus correction.
+for VeriGrant's exact-payout consensus correction. The exact-payout records
+below predate the challenge-window correction.
 
 ## Corrected Deployment
 

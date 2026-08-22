@@ -71,6 +71,15 @@ def _review(payout_bps: int, completion_bps: int = 5_000) -> dict[str, object]:
 
 
 class ReviewEquivalenceTests(unittest.TestCase):
+    def test_challenge_window_is_open_before_deadline(self):
+        self.assertTrue(CONTRACT._challenge_window_open(3_600, 3_599))
+
+    def test_challenge_window_closes_at_deadline(self):
+        self.assertFalse(CONTRACT._challenge_window_open(3_600, 3_600))
+
+    def test_zero_deadline_never_allows_challenge(self):
+        self.assertFalse(CONTRACT._challenge_window_open(0, 0))
+
     def test_exact_payout_matches(self):
         leader = _review(5_000)
         validator = _review(5_000, completion_bps=6_000)

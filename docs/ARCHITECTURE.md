@@ -47,8 +47,16 @@ class Milestone:
     paid_out: u256
     refunded: u256
     evidence_count: u256
+    reviewed_at: u256
+    challenge_deadline_ts: u256
+    challenge_bond: u256
+    challenge_count: u256
     review: Review
 ```
+
+Challenge bonds are stored in a top-level `DynArray[ChallengeBond]` with the
+grant and milestone identifiers. This keeps multiple grant and milestone
+challenges isolated and lets finalization refund every bond exactly once.
 
 ### Evidence
 
@@ -93,9 +101,9 @@ stateDiagram-v2
   [*] --> open
   open --> evidence_submitted: submit_milestone_evidence
   evidence_submitted --> reviewed: request_milestone_review
-  reviewed --> challenged: challenge_milestone_review
+  reviewed --> challenged: challenge within one-hour window
   challenged --> reviewed: re-review
-  reviewed --> finalized: finalize_milestone
+  reviewed --> finalized: finalize after challenge deadline
   open --> expired: expire_milestone
 ```
 
@@ -145,6 +153,11 @@ When all milestones are finalized or expired, any remaining unallocated escrow i
 - Funding is explicit through `fund_grant`.
 - Review is blocked until escrow exists.
 - Payout cannot exceed milestone allocation.
+- Finalization is rejected while `challenge_deadline_ts` is in the future.
+- Every review starts a one-hour challenge window; each challenge resets it.
+- At most two bonded challenge rounds are accepted per milestone.
+- Challenge bonds are excluded from milestone payout allocation and refunded
+  exactly once at finalization.
 - Milestone allocations cannot exceed 10000 bps per grant.
 - Evidence count and field sizes are bounded.
 - Web evidence excerpts and image evidence are bounded.

@@ -43,7 +43,9 @@ decision: incomplete
 payout_bps: 0
 ```
 
-6. Finalize the milestone.
+6. Confirm `get_milestone(0, 0).challenge_window_open` is `true` and that an
+   immediate `finalize_milestone` call is rejected.
+7. Wait until `challenge_deadline_ts`, then finalize the milestone.
 
 Expected final state:
 
@@ -78,7 +80,11 @@ decision: complete
 payout_bps: 10000
 ```
 
-6. Finalize the milestone.
+6. Confirm an immediate finalization is rejected while the challenge window is
+   open. Submit a bonded challenge from the other party and confirm it triggers
+   a fresh reviewed result and a new `challenge_deadline_ts`.
+7. Wait until the new challenge deadline, then finalize the milestone and
+   confirm the challenge bond is refunded exactly once.
 
 Expected final state:
 
@@ -102,6 +108,8 @@ For each transaction, record:
 - final `get_milestone`;
 - final `get_review`;
 - final `accounted_balance`.
+- `reviewed_at`, `challenge_deadline_ts`, and `challenge_window_open` before
+  and after the challenge window.
 
 ## Debugging
 

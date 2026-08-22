@@ -163,6 +163,13 @@ If Bradbury returns `LEADER_TIMEOUT`, retry the review call. This is a testnet c
 
 ## Finalize
 
+Review does not authorize immediate finalization. The contract opens a
+one-hour on-chain challenge window. During that window either sponsor or
+grantee may call `challenge_milestone_review` with the minimum bond; a
+successful challenge starts a fresh review and resets the window. Check
+`get_milestone(0, 0).challenge_deadline_ts` and wait until
+`challenge_window_open` is `false`.
+
 Call:
 
 ```text
@@ -179,4 +186,3 @@ get_grant(0).status: completed
 get_grant(0).paid_out: 1000000000000000000
 accounted_balance: 0
 ```
-

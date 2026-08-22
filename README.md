@@ -46,6 +46,7 @@ docs/
   TEST_PLAN.md         # Positive and negative Bradbury test plan
   TEST_REPORT.md       # Corrected Bradbury deployment and execution evidence
   REVIEW_RESPONSE_2026-08-13.md # Exact-payout correction record
+  REVIEW_RESPONSE_2026-08-22.md # Challenge-window correction record
   GENLAYER_NOTES.md    # GenLayer-specific implementation notes
 
 LICENSE
@@ -53,9 +54,21 @@ README.md
 SECURITY.md
 ```
 
-## Corrected Bradbury Deployment
+## Challenge-Window Release
 
-Corrected, tested deployment:
+The current source adds an enforceable one-hour challenge window after every
+milestone review. Finalization is rejected while the window is open. Either
+party may submit up to two bonded challenges; each challenge triggers a fresh
+review and resets the window. Challenge bonds are tracked separately from
+milestone escrow and refunded exactly once at finalization.
+
+The release is covered by the local regression suite and is pending its fresh
+Bradbury deployment. The prior deployment below is retained as historical
+exact-payout evidence only and must not be used for resubmission.
+
+## Historical Exact-Payout Deployment
+
+Historical deployment:
 
 ```text
 0x6B7D4b407954629C34d628f31672f4129f1926D1
@@ -68,7 +81,8 @@ Deployment transaction:
 ```
 
 The deployment source matches `contracts/veri_grant.py` at commit `4e43896`.
-Both milestone paths were tested on GenLayer Bradbury:
+Both milestone paths were tested on GenLayer Bradbury, but this deployment does
+not include the challenge-window correction:
 
 - placeholder evidence was rejected, refunded, and left `accounted_balance()` at `0`;
 - valid deployment evidence was accepted, paid out, and left `accounted_balance()` at `0`.
@@ -106,8 +120,11 @@ the deployment and resubmission requirements.
 4. Grantee submits milestone evidence.
 5. Sponsor or grantee requests milestone review.
 6. GenLayer validators evaluate evidence against the milestone criteria.
-7. Sponsor or grantee finalizes the reviewed milestone.
-8. Funds are paid to the grantee, refunded to the sponsor, or split.
+7. A one-hour on-chain challenge window opens after review; either party may
+   submit up to two bonded challenges, each of which triggers a fresh review
+   and resets the window.
+8. Anyone may finalize only after the active challenge window closes.
+9. Funds are paid to the grantee, refunded to the sponsor, or split.
 
 ```mermaid
 flowchart LR
@@ -116,10 +133,12 @@ flowchart LR
   C --> D["submit_milestone_evidence"]
   D --> E["request_milestone_review"]
   E --> F{"review decision"}
-  F -->|complete| G["finalize: payout"]
-  F -->|incomplete| H["finalize: refund"]
-  F -->|partial| I["finalize: split"]
-  F -->|needs_more_evidence| J["challenge or submit more evidence"]
+  F --> J["one-hour challenge window"]
+  J -->|challenge| E
+  J -->|window closed| K["finalize"]
+  K -->|complete| G["payout"]
+  K -->|incomplete| H["refund"]
+  K -->|partial| I["split"]
 ```
 
 ## Public Interface
@@ -145,6 +164,11 @@ Read methods:
 - `get_review(grant_id, milestone_id)`
 - `contract_balance()`
 - `accounted_balance()`
+
+`get_milestone` exposes `reviewed_at`, `challenge_deadline_ts`,
+`challenge_window_open`, `challenge_count`, and `challenge_bond` so clients can
+verify that finalization is not yet authorized and that challenge bonds remain
+accounted for.
 
 ## Review Output
 

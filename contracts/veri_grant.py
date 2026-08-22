@@ -15,6 +15,8 @@ MAX_FETCHED_EVIDENCE = 5
 MAX_FETCHED_CHARS = 5000
 MAX_IMAGE_EVIDENCE = 2
 MIN_CHALLENGE_BOND_WEI = u256(10**16)
+CHALLENGE_WINDOW_SECONDS = 60 * 60
+MAX_CHALLENGES_PER_MILESTONE = 2
 
 
 @gl.evm.contract_interface
@@ -55,6 +57,15 @@ class Review:
 
 @allow_storage
 @dataclass
+class ChallengeBond:
+    grant_id: u256
+    milestone_id: u256
+    challenger: Address
+    amount: u256
+
+
+@allow_storage
+@dataclass
 class Milestone:
     grant_id: u256
     milestone_id: u256
@@ -67,6 +78,10 @@ class Milestone:
     paid_out: u256
     refunded: u256
     evidence_count: u256
+    reviewed_at: u256
+    challenge_deadline_ts: u256
+    challenge_bond: u256
+    challenge_count: u256
     review: Review
 
 
@@ -158,6 +173,10 @@ def _reviews_equivalent_payload(
     if a["decision"] in ["complete", "incomplete"] and abs(a["confidence_bps"] - b["confidence_bps"]) > 2500:
         return False
     return True
+
+
+def _challenge_window_open(challenge_deadline_ts: int, now_ts: int) -> bool:
+    return int(challenge_deadline_ts) > 0 and int(now_ts) < int(challenge_deadline_ts)
 
 
 def _judge_snapshot_payload(snapshot: dict[str, typing.Any]) -> dict[str, typing.Any]:
@@ -256,6 +275,7 @@ class VeriGrant(gl.Contract):
     grants: DynArray[Grant]
     milestones: DynArray[Milestone]
     evidence_items: DynArray[EvidenceItem]
+    challenge_bonds: DynArray[ChallengeBond]
 
     def __init__(self):
         pass
@@ -268,7 +288,8 @@ class VeriGrant(gl.Contract):
         grant_spec: str,
         review_policy: str,
     ) -> u256:
-        self._require_nonempty(grantee, "grantee")
+        grantee_text = str(grantee)
+        self._require_nonempty(grantee_text, "grantee")
         self._require_nonempty(title, "title")
         self._require_nonempty(grant_spec, "grant_spec")
         self._require_nonempty(review_policy, "review_policy")
@@ -279,7 +300,7 @@ class VeriGrant(gl.Contract):
         grant_id = u256(len(self.grants))
         grant = Grant(
             sponsor=gl.message.sender_address,
-            grantee=Address(grantee),
+            grantee=Address(grantee_text),
             title=title,
             grant_spec=grant_spec,
             review_policy=review_policy,
@@ -309,6 +330,8 @@ class VeriGrant(gl.Contract):
             raise gl.vm.UserError("only sponsor can add milestones")
         if grant.status not in ["draft", "active"]:
             raise gl.vm.UserError("grant is closed")
+        if grant.escrowed > u256(0):
+            raise gl.vm.UserError("cannot add milestones after funding")
         if grant.milestone_count >= u256(MAX_MILESTONES_PER_GRANT):
             raise gl.vm.UserError("too many milestones")
         if allocation_bps == u256(0):
@@ -336,6 +359,10 @@ class VeriGrant(gl.Contract):
             paid_out=u256(0),
             refunded=u256(0),
             evidence_count=u256(0),
+            reviewed_at=u256(0),
+            challenge_deadline_ts=u256(0),
+            challenge_bond=u256(0),
+            challenge_count=u256(0),
             review=review,
         )
         self.milestones.append(milestone)
@@ -352,6 +379,10 @@ class VeriGrant(gl.Contract):
             raise gl.vm.UserError("only sponsor can fund grant")
         if grant.status not in ["draft", "active"]:
             raise gl.vm.UserError("grant is closed")
+        for i in range(int(grant.milestone_count)):
+            existing = self._milestone(grant_id, grant, i)
+            if existing.status not in ["open", "evidence_submitted"]:
+                raise gl.vm.UserError("grant has progressed beyond funding")
         if gl.message.value == u256(0):
             raise gl.vm.UserError("no value sent")
         grant.escrowed = grant.escrowed + gl.message.value
@@ -394,6 +425,7 @@ class VeriGrant(gl.Contract):
 
         review = self._review_milestone(grant, milestone)
         milestone.review = review
+        self._start_challenge_window(milestone)
         milestone.status = "reviewed"
 
     @gl.public.write.payable
@@ -409,17 +441,31 @@ class VeriGrant(gl.Contract):
         milestone = self._milestone(grant_id, grant, milestone_id)
         if milestone.status != "reviewed":
             raise gl.vm.UserError("only reviewed milestones can be challenged")
+        if not self._challenge_window_is_open(milestone):
+            raise gl.vm.UserError("challenge window is closed")
         if gl.message.sender_address not in [grant.sponsor, grant.grantee]:
             raise gl.vm.UserError("only sponsor or grantee can challenge")
         if gl.message.value < MIN_CHALLENGE_BOND_WEI:
             raise gl.vm.UserError("challenge bond too small")
+        if milestone.challenge_count >= u256(MAX_CHALLENGES_PER_MILESTONE):
+            raise gl.vm.UserError("milestone challenge limit reached")
 
-        grant.escrowed = grant.escrowed + gl.message.value
+        milestone.challenge_bond = milestone.challenge_bond + gl.message.value
+        milestone.challenge_count = milestone.challenge_count + u256(1)
+        self.challenge_bonds.append(
+            ChallengeBond(
+                grant_id=u256(grant_id),
+                milestone_id=u256(milestone_id),
+                challenger=gl.message.sender_address,
+                amount=gl.message.value,
+            )
+        )
         milestone.status = "challenged"
         self._append_evidence(u256(grant_id), u256(milestone_id), milestone, evidence_type, uri, description)
         review = self._review_milestone(grant, milestone)
         review.challenger = gl.message.sender_address
         milestone.review = review
+        self._start_challenge_window(milestone)
         milestone.status = "reviewed"
 
     @gl.public.write
@@ -430,11 +476,16 @@ class VeriGrant(gl.Contract):
             raise gl.vm.UserError("milestone must be reviewed before finalization")
         if not milestone.review.decided:
             raise gl.vm.UserError("milestone review is not decided")
+        if self._challenge_window_is_open(milestone):
+            raise gl.vm.UserError("challenge window is still open")
 
         allocated = (grant.escrowed * milestone.allocation_bps) // u256(10000)
+        if milestone.paid_out + milestone.refunded > allocated:
+            raise gl.vm.UserError("milestone accounting exceeds allocation")
         remaining_allocation = allocated - milestone.paid_out - milestone.refunded
         if remaining_allocation == u256(0):
             milestone.status = "finalized"
+            self._refund_challenge_bond(milestone)
             self._close_grant_if_complete(grant_id, grant)
             return
 
@@ -453,6 +504,7 @@ class VeriGrant(gl.Contract):
             _Recipient(grant.sponsor).emit_transfer(value=refund)
 
         milestone.status = "finalized"
+        self._refund_challenge_bond(milestone)
         self._close_grant_if_complete(grant_id, grant)
 
     @gl.public.write
@@ -521,6 +573,11 @@ class VeriGrant(gl.Contract):
             "deadline_ts": milestone.deadline_ts,
             "deadline_passed": self._deadline_passed(milestone),
             "status": milestone.status,
+            "reviewed_at": milestone.reviewed_at,
+            "challenge_deadline_ts": milestone.challenge_deadline_ts,
+            "challenge_window_open": self._challenge_window_is_open(milestone),
+            "challenge_bond": milestone.challenge_bond,
+            "challenge_count": milestone.challenge_count,
             "paid_out": milestone.paid_out,
             "refunded": milestone.refunded,
             "evidence_count": milestone.evidence_count,
@@ -571,6 +628,9 @@ class VeriGrant(gl.Contract):
         for i in range(len(self.grants)):
             grant = self.grants[i]
             total = total + grant.escrowed - grant.paid_out - grant.refunded
+            for milestone_id in range(int(grant.milestone_count)):
+                milestone = self._milestone(i, grant, milestone_id)
+                total = total + milestone.challenge_bond
         return total
 
     def _review_milestone(self, grant: Grant, milestone: Milestone) -> Review:
@@ -683,21 +743,28 @@ class VeriGrant(gl.Contract):
     ) -> None:
         if milestone.evidence_count >= u256(MAX_EVIDENCE_PER_MILESTONE):
             raise gl.vm.UserError("too many evidence items")
-        self._require_nonempty(evidence_type, "evidence_type")
-        self._require_short(evidence_type, 32, "evidence_type")
-        self._require_short(uri, 600, "uri")
-        self._require_short(description, MAX_TEXT_FIELD, "description")
-        if evidence_type not in ["text", "url", "api", "image_url", "attestation"]:
+        evidence_type_text = str(evidence_type)
+        uri_text = "" if uri == 0 else str(uri)
+        description_text = "" if description == 0 else str(description)
+        self._require_nonempty(evidence_type_text, "evidence_type")
+        self._require_short(evidence_type_text, 32, "evidence_type")
+        self._require_short(uri_text, 600, "uri")
+        self._require_short(description_text, MAX_TEXT_FIELD, "description")
+        if evidence_type_text not in ["text", "url", "api", "image_url", "attestation"]:
             raise gl.vm.UserError("unsupported evidence_type")
+        if evidence_type_text in ["url", "api", "image_url"] and not uri_text.startswith("https://"):
+            raise gl.vm.UserError("web evidence requires an HTTPS URI")
+        if not uri_text and not description_text:
+            raise gl.vm.UserError("evidence requires a URI or description")
 
         self.evidence_items.append(
             EvidenceItem(
                 grant_id=grant_id,
                 milestone_id=milestone_id,
                 submitter=gl.message.sender_address,
-                evidence_type=evidence_type,
-                uri=uri,
-                description=description,
+                evidence_type=evidence_type_text,
+                uri=uri_text,
+                description=description_text,
                 submitted_at=self._now_iso(),
             )
         )
@@ -736,6 +803,32 @@ class VeriGrant(gl.Contract):
 
     def _deadline_passed(self, milestone: Milestone) -> bool:
         return milestone.deadline_ts > u256(0) and self._now_ts() > int(milestone.deadline_ts)
+
+    def _start_challenge_window(self, milestone: Milestone) -> None:
+        milestone.reviewed_at = u256(self._now_ts())
+        milestone.challenge_deadline_ts = milestone.reviewed_at + u256(CHALLENGE_WINDOW_SECONDS)
+
+    def _challenge_window_is_open(self, milestone: Milestone) -> bool:
+        return _challenge_window_open(milestone.challenge_deadline_ts, self._now_ts())
+
+    def _refund_challenge_bond(self, milestone: Milestone) -> None:
+        if milestone.challenge_bond == u256(0):
+            return
+        refunded = u256(0)
+        for i in range(len(self.challenge_bonds)):
+            bond = self.challenge_bonds[i]
+            if (
+                bond.grant_id == milestone.grant_id
+                and bond.milestone_id == milestone.milestone_id
+                and bond.amount > u256(0)
+            ):
+                amount = bond.amount
+                bond.amount = u256(0)
+                refunded = refunded + amount
+                _Recipient(bond.challenger).emit_transfer(value=amount)
+        if refunded != milestone.challenge_bond:
+            raise gl.vm.UserError("challenge bond accounting mismatch")
+        milestone.challenge_bond = u256(0)
 
     def _require_nonempty(self, value: str, field: str) -> None:
         if len(value.strip()) == 0:
